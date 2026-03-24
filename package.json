@@ -1,0 +1,10 @@
+{
+  "name": "com.compilateur.alert",
+  "version": "1.0.0",
+  "displayName": "Compilateur Alert",
+  "description": "Joue un son selon le résultat de la compilation Unity (succès ou erreur C#).",
+  "unity": "6000.0",
+  "author": {
+    "name": "Compilateur Alert"
+  }
+}
