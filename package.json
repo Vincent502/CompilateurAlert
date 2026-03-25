@@ -5,6 +5,6 @@
   "description": "Joue un son selon le résultat de la compilation Unity (succès ou erreur C#).",
   "unity": "6000.0",
   "author": {
-    "name": "Compilateur Alert"
+    "name": "Vincent502"
   }
 }
