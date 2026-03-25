@@ -37,12 +37,15 @@ Le plugin liste automatiquement les fichiers `.wav` présents dans ce dossier da
 
 1. Ajoute ton fichier `*.wav` dans le dossier `Sounds`
 2. Ouvre la fenêtre de configuration : `CompilateurAlert/Alert Settings Window`
+
 ![Image](./Documents/WindowAlertSettings.jpg)
+
 3. Choisis indépendamment :
   - **Error Sound File**
   - **Succes Sound File**
 4. Régle le **volume** de chaque évènement
 5. Clique sur **Confirm settings** pour sauvegarder les paramètres
+
 ![Image](./Documents/InterfaceAlertSettings.jpg)
 
 ## Fenêtre de configuration (WindowEditor)
