@@ -1,4 +1,4 @@
-# Compilateur Alert (CompilateurSound)
+# Compilateur Alert
 
 Ce plugin joue un son dans l’éditeur Unity à la fin d’une compilation, selon le résultat :
 
@@ -20,7 +20,7 @@ Le script `CompilateurSound` s’exécute uniquement dans l’éditeur (`#if UNI
 
 ### Installation via lien git
 
-Dans le Package manager, ajouter un package depuis git en utilisant le lien du repos
+Dans le Package manager, ajouter un package depuis git en utilisant le lien du repo
 
 ## Où placer tes sons
 
