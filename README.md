@@ -1,4 +1,4 @@
-# Compilateur Alert (CompilateurSound)
+# Compilateur Alert
 
 Ce plugin joue un son dans l’éditeur Unity à la fin d’une compilation, selon le résultat :
 
