@@ -19,7 +19,7 @@ public class WindowEditor : EditorWindow
     }
     // getComponent<CompilateurSound> compilateurSound;
     //* MenuItem to display the window
-    [MenuItem("CompilateurAlert/Settings Window")]
+    [MenuItem("CompilateurAlert/Alert Settings Window")]
     //* Method to display the window
     public static void ShowExample()
     {
