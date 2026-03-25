@@ -1,131 +1,79 @@
-# CompilateurSound - Explication du fonctionnement
+# Compilateur Alert (CompilateurSound)
 
-Ce document explique le script `CompilateurSound.cs` et la logique utilisée pour jouer un son selon le resultat de la compilation Unity.
+Ce plugin joue un son dans l’éditeur Unity à la fin d’une compilation, selon le résultat :
 
-## Objectif
+- **Succès** (aucune erreur C# détectée)
+- **Erreur** (au moins une erreur C# détectée)
 
-Le script joue un fichier audio apres une compilation:
+Les sons et leurs **volumes** sont réglables indépendamment via une fenêtre `EditorWindow`.
 
-- `error.wav` si une erreur C# a ete detectee
-- `succes.wav` si aucune erreur C# n'a ete detectee
+## Fonctionnement
 
-Les fichiers sont attendus dans le dossier `Sounds` à côté du script (package UPM ou copie sous `Assets/Editor/...`):
+Le script `CompilateurSound` s’exécute uniquement dans l’éditeur (`#if UNITY_EDITOR`) et :
 
-- `.../CompilateurAlert/Sounds/error.wav`
-- `.../CompilateurAlert/Sounds/succes.wav`
+1. s’abonne à `CompilationPipeline.compilationStarted` et `CompilationPipeline.compilationFinished`
+2. pendant la compilation, analyse les logs pour détecter des lignes contenant `error CS`
+3. quand la compilation se termine, il joue le son **Succès** ou **Erreur**
+4. la lecture se fait via un `AudioSource` temporaire (donc **pas besoin** d’un AudioSource placé dans une scène)
 
-## Installation (autre projet)
+## Installation
 
-Dans `Packages/manifest.json`, ajouter par exemple:
+### Installation via lien git
+
+Dans `Packages/manifest.json`, ajoute par exemple :
 
 `"com.compilateur.alert": "https://github.com/VOTRE_ORG/CompilateurAlert.git"`
 
-Ou en local: `"com.compilateur.alert": "file:../CompilateurAlert"`
+### Installation en local
 
-## Pourquoi ce script est un script Editor
+`"com.compilateur.alert": "file:../CompilateurAlert"`
 
-Le code est entoure de:
+## Où placer tes sons
 
-- `#if UNITY_EDITOR`
+Les fichiers doivent être des **`.wav`** placés dans le dossier **`Sounds`** situé **à côté de** `CompilateurSound.cs` dans le package.
 
-et utilise des API Unity Editor (`CompilationPipeline`, `SessionState`, `AssemblyReloadEvents`), donc il est execute uniquement dans l'editeur Unity.
+Le plugin liste automatiquement les fichiers `.wav` présents dans ce dossier dans la fenêtre de configuration.
 
-## Vue d'ensemble du flux
+## Ajouter / remplacer des sons
 
-1. Unity demarre une compilation -> `OnCompilationStarted`
-2. Pendant la compilation, les logs sont analyses -> `OnLogMessageReceived`
-3. Unity signale la fin de compilation -> `OnCompilationFinished`
-4. Le script attend un court delai pour laisser arriver d'eventuels logs tardifs -> `TryFinalizeAndPlay`
-5. Le script lit l'etat final en `SessionState`, choisit le son et le joue -> `TryPlayPendingSoundAfterReload`
+1. Ajoute ton fichier `*.wav` dans le dossier `Sounds`
+2. Ouvre la fenêtre de configuration : `CompilateurAlert/Settings Window`
+3. Choisis indépendamment :
+   - **Error Sound File**
+   - **Succes Sound File**
+4. Régle le **volume** de chaque évènement
+5. Clique sur **Confirm settings** pour sauvegarder les paramètres
 
-## Details des variables importantes
+## Fenêtre de configuration (WindowEditor)
 
-- `capturingErrors`: active/desactive la phase de capture des erreurs
-- `hasErrors`: devient `true` si une ligne de log contient `error CS...`
-- `finishedAt`: horodatage de fin de compilation
-- `KeyPending`: indique qu'un son doit etre joue
-- `KeyHadErrors`: memorise si la compilation contenait des erreurs
+Pour ouvrir la fenêtre :
 
-## Role de chaque methode
+- menu Unity : `CompilateurAlert/Settings Window`
 
-### `CompilateurSound()` (constructeur statique)
+Dans la fenêtre :
 
-S'abonne aux evenements Unity:
+- `Dropdown` **Error Sound File** : choisir le son d’erreur
+- `Slider` **Volume (error)** : régler le volume de l’erreur
+- `Dropdown` **Succes Sound File** : choisir le son de succès
+- `Slider` **Volume (success)** : régler le volume du succès
+- bouton **Confirm settings** : sauvegarde les réglages (persistant via `EditorPrefs`)
 
-- `CompilationPipeline.compilationStarted`
-- `CompilationPipeline.compilationFinished`
-- `Application.logMessageReceived`
-- `AssemblyReloadEvents.afterAssemblyReload`
+Ensuite, à la prochaine compilation, le plugin joue le bon son avec le bon volume.
 
-Puis tente immediatement de jouer un son si un etat `pending` existe deja.
+## Noms par défaut
 
-### `OnCompilationStarted(object _)`
+Par défaut, le plugin attend :
 
-Prepare une nouvelle session:
+- `error.wav` pour les erreurs
+- `succes.wav` pour le succès
 
-- active `capturingErrors`
-- remet `hasErrors` a `false`
+Les noms sélectionnés dans la fenêtre doivent correspondre **exactement** aux fichiers présents dans `Sounds`.
 
-### `OnLogMessageReceived(string condition, string stackTrace, LogType type)`
+## Débogage rapide
 
-Pendant la compilation:
+Si aucun son ne sort :
 
-- ignore les logs non pertinents
-- si un log de type erreur contient `error CS` (insensible a la casse), alors:
-  - `hasErrors = true`
-  - `SessionState[KeyHadErrors] = true`
-
-Cela permet de capter les erreurs C# meme si elles arrivent tard.
-
-### `OnCompilationFinished(object _)`
-
-A la fin de compilation:
-
-- marque qu'un son est en attente (`KeyPending = true`)
-- stocke l'etat courant de `hasErrors`
-- enregistre l'instant de fin (`finishedAt`)
-- planifie la finalisation via `EditorApplication.update`
-
-### `TryFinalizeAndPlay()`
-
-Attend un petit delai (0.5s) avant de finaliser.
-
-Ce delai est important car certains logs d'erreur peuvent arriver juste apres `compilationFinished`.
-
-Quand le delai est passe:
-
-- appelle `TryPlayPendingSoundAfterReload()`
-- se desabonne de `EditorApplication.update`
-
-### `TryPlayPendingSoundAfterReload()`
-
-Lit `SessionState`:
-
-- si rien n'est en attente, quitte
-- sinon lit `KeyHadErrors`
-- nettoie les cles (`EraseBool`) pour eviter les doubles lectures
-- choisit `error.wav` ou `succes.wav`
-- appelle `PlaySoundWavFile(...)` après résolution du dossier `Sounds`
-
-Cette methode est aussi appelee apres un `domain reload` via `AssemblyReloadEvents.afterAssemblyReload`, ce qui rend le comportement plus fiable.
-
-### `GetSoundsFolderFullPath()` / `PlaySoundWavFile(string fullPath)`
-
-- localise le dossier `Sounds` via `AssetDatabase` (chemin du script `CompilateurSound.cs`), ce qui fonctionne dans `Assets/` ou dans un package sous `Packages/`
-- joue le fichier avec `SoundPlayer` (`Load` + `PlaySync`)
-
-En cas de probleme, log un warning explicite.
-
-## Pourquoi utiliser `SessionState`
-
-Pendant une compilation Unity, un rechargement de domaine peut interrompre des callbacks temporaires.
-`SessionState` permet de conserver l'information essentielle entre les phases et de jouer le bon son de maniere plus fiable.
-
-## Points d'attention
-
-- Le nom du fichier doit etre exact (`succes.wav` et non `success.wav`).
-- Le fichier doit exister physiquement (pas seulement le `.meta`).
-- Si aucun son ne sort, verifier la Console pour:
-  - `fichier audio introuvable`
-  - `erreur lecture son`
+- vérifie que les fichiers `*.wav` existent bien dans le dossier `Sounds`
+- vérifie la Console (messages du style “fichier audio introuvable”)
+- vérifie que tu as cliqué sur **Confirm settings** après modification des choix/volumes
 

@@ -9,27 +9,58 @@ using UnityEngine;
 [InitializeOnLoad]
 internal static class CompilateurSound
 {
+    //* Key to capture the pending
     private const string KeyPending = "CompilateurSound.Pending";
     private const string KeyHadErrors = "CompilateurSound.HadErrors";
 
+    //* Key to capture the preferences
+    private const string PrefErrorSoundName = "CompilateurSound.ErrorSoundName";
+    private const string PrefSuccesSoundName = "CompilateurSound.SuccessSoundName";
+    private const string PrefErrorSoundVolume = "CompilateurSound.ErrorSoundVolume";
+    private const string PrefSuccesSoundVolume = "CompilateurSound.SuccessSoundVolume";
+    //* Key to capture the errors
     private static bool capturingErrors;
     private static bool hasErrors;
-
+    //* Time of the compilation
     private static double finishedAt;
+    //* Name of the sound
+    public static string errorSoundName = "cheh_Maskey.wav";
+    public static string succesSoundName = "Shoobidoba.wav";
+    //* Volume of the sound
+    public static float errorSoundVolume = 0.5f;
+    public static float succesSoundVolume = 0.5f;
 
     static CompilateurSound()
     {
+        //* Charge les réglages persistés
+        LoadSettingsFromPrefs();
         CompilationPipeline.compilationStarted += OnCompilationStarted;
         CompilationPipeline.compilationFinished += OnCompilationFinished;
-
-        // * Après domain reload, on rejoue l'action en attente.
         AssemblyReloadEvents.afterAssemblyReload += TryPlayPendingSoundAfterReload;
-
         Application.logMessageReceived += OnLogMessageReceived;
-
-        // * Sécurité: si pending est déjà posé au chargement, tente immédiatement.
+        //* Sécurité: si pending est déjà posé au chargement
         TryPlayPendingSoundAfterReload();
     }
+    //* Charge les réglages persistés
+    private static void LoadSettingsFromPrefs()
+    {
+        errorSoundName = EditorPrefs.GetString(PrefErrorSoundName, "error.wav");
+        succesSoundName = EditorPrefs.GetString(PrefSuccesSoundName, "succes.wav");
+        errorSoundVolume = EditorPrefs.GetFloat(PrefErrorSoundVolume, 0.5f);
+        succesSoundVolume = EditorPrefs.GetFloat(PrefSuccesSoundVolume, 0.5f);
+        //* Clamp au cas où
+        errorSoundVolume = Mathf.Clamp01(errorSoundVolume);
+        succesSoundVolume = Mathf.Clamp01(succesSoundVolume);
+    }
+
+    public static void SaveSettingsToPrefs()
+    {
+        EditorPrefs.SetString(PrefErrorSoundName, errorSoundName);
+        EditorPrefs.SetString(PrefSuccesSoundName, succesSoundName);
+        EditorPrefs.SetFloat(PrefErrorSoundVolume, Mathf.Clamp01(errorSoundVolume));
+        EditorPrefs.SetFloat(PrefSuccesSoundVolume, Mathf.Clamp01(succesSoundVolume));
+    }
+
 
     private static void OnCompilationStarted(object _)
     {
@@ -37,11 +68,14 @@ internal static class CompilateurSound
         hasErrors = false;
     }
 
+    
+
     private static void OnCompilationFinished(object _)
     {
          SessionState.SetBool(KeyPending, true);
         SessionState.SetBool(KeyHadErrors, hasErrors); // * état initial
         finishedAt = EditorApplication.timeSinceStartup;
+
         EditorApplication.update -= TryFinalizeAndPlay;
         EditorApplication.update += TryFinalizeAndPlay;
     }
@@ -66,6 +100,33 @@ internal static class CompilateurSound
         EditorApplication.update -= TryFinalizeAndPlay;
     }
 
+    /// <summary>
+    /// Résout le dossier Sounds à côté de ce script (Assets ou package UPM).
+    /// </summary>
+    private static string GetSoundsFolderAssetPath()
+    {
+        string[] guids = AssetDatabase.FindAssets("CompilateurSound t:MonoScript");
+        foreach (string guid in guids)
+        {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+            if (string.IsNullOrEmpty(assetPath) || !assetPath.EndsWith("CompilateurSound.cs", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string scriptDir = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(scriptDir))
+                continue;
+
+            // * Important: AssetDatabase.IsValidFolder attend un chemin "Assets/..."
+            string soundsFolderAssetPath = (scriptDir + "/Sounds").Replace('\\', '/');
+            // * Vérifie si le dossier existe dans l'Asset Database
+            if (AssetDatabase.IsValidFolder(soundsFolderAssetPath))
+            return soundsFolderAssetPath;
+        }
+
+        Debug.LogWarning("CompileErrorSound: impossible de localiser le dossier Sounds (CompilateurSound.cs introuvable).");
+        return null;
+    }
+
     private static void TryPlayPendingSoundAfterReload()
     {
         if (!SessionState.GetBool(KeyPending, false))
@@ -77,62 +138,47 @@ internal static class CompilateurSound
         SessionState.EraseBool(KeyPending);
         SessionState.EraseBool(KeyHadErrors);
 
-        string fileName = hadErrors ? "error.wav" : "succes.wav";
-        string soundsFolder = GetSoundsFolderFullPath();
-        if (string.IsNullOrEmpty(soundsFolder))
+        string fileName = hadErrors ? errorSoundName : succesSoundName;
+        float volume = hadErrors ? errorSoundVolume : succesSoundVolume;
+
+        string soundsFolderAssetPath = GetSoundsFolderAssetPath();
+        if (string.IsNullOrEmpty(soundsFolderAssetPath))
             return;
 
-        string fullPath = Path.Combine(soundsFolder, fileName);
-        PlaySoundWavFile(fullPath);
-    }
+        string clipAssetPath = (soundsFolderAssetPath + "/" + fileName).Replace('\\', '/');
+        var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(clipAssetPath);
 
-    /// <summary>
-    /// Résout le dossier Sounds à côté de ce script (Assets ou package UPM).
-    /// </summary>
-    private static string GetSoundsFolderFullPath()
-    {
-        string[] guids = AssetDatabase.FindAssets("CompilateurSound t:MonoScript");
-        foreach (string guid in guids)
-        {
-            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-            if (string.IsNullOrEmpty(assetPath) || !assetPath.EndsWith("CompilateurSound.cs", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            string scriptDir = Path.GetDirectoryName(assetPath);
-            if (string.IsNullOrEmpty(scriptDir))
-                continue;
-
-            string soundsRelative = (scriptDir + "/Sounds").Replace('\\', '/');
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
-            string fullPath = Path.GetFullPath(
-                Path.Combine(projectRoot, soundsRelative.Replace('/', Path.DirectorySeparatorChar)));
-
-            if (Directory.Exists(fullPath))
-                return fullPath;
+        if (clip == null){
+            Debug.LogWarning($"CompileErrorSound: fichier audio introuvable: {clipAssetPath}");
+            return;
         }
-
-        Debug.LogWarning("CompileErrorSound: impossible de localiser le dossier Sounds (CompilateurSound.cs introuvable).");
-        return null;
+        PlayClipWithVolume(clip, volume);
     }
 
-    private static void PlaySoundWavFile(string fullPath)
+
+    private static void PlayClipWithVolume(AudioClip clip, float volume)
     {
-        try
+        //* Crée un GameObject temporaire pour jouer le son
+        var go = new GameObject("CompilateurSound_AudioSource");
+        go.hideFlags = HideFlags.HideAndDontSave;
+
+        var source = go.AddComponent<AudioSource>();
+        source.clip = clip;
+        source.volume = volume;
+
+        source.Play();
+
+        double destroyAt = EditorApplication.timeSinceStartup + (clip.length > 0.0f ? clip.length : 1.0f);
+
+        void OnUpdate()
         {
-            if (!File.Exists(fullPath))
+            if(EditorApplication.timeSinceStartup >= destroyAt)
             {
-                Debug.LogWarning($"CompileErrorSound: fichier audio introuvable: {fullPath}");
-                return;
+                EditorApplication.update -= OnUpdate;
+                UnityEngine.Object.DestroyImmediate(go);
             }
-
-            var player = new SoundPlayer(fullPath);
-            player.Load();
-            player.PlaySync(); // * garantit la lecture complète
         }
-        catch (Exception ex)
-        {
-            Debug.LogWarning("CompileErrorSound: erreur lecture son: " + ex.Message);
-        }
+        EditorApplication.update += OnUpdate;
     }
 }
 #endif
