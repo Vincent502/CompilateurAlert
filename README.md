@@ -20,17 +20,16 @@ Le script `CompilateurSound` s’exécute uniquement dans l’éditeur (`#if UNI
 
 ### Installation via lien git
 
-Dans `Packages/manifest.json`, ajoute par exemple :
-
-`"com.compilateur.alert": "https://github.com/VOTRE_ORG/CompilateurAlert.git"`
-
-### Installation en local
-
-`"com.compilateur.alert": "file:../CompilateurAlert"`
+Dans le Package manager, ajouter un package depuis git en utilisant le lien du repos
 
 ## Où placer tes sons
 
-Les fichiers doivent être des **`.wav`** placés dans le dossier **`Sounds`** situé **à côté de** `CompilateurSound.cs` dans le package.
+Les fichiers doivent être des `.wav` placés dans le dossier `Sounds` situé **à côté de** `CompilateurSound.cs` dans le package.
+
+![Image](./Documents/FolderSound.jpg)
+
+  
+
 
 Le plugin liste automatiquement les fichiers `.wav` présents dans ce dossier dans la fenêtre de configuration.
 
@@ -39,8 +38,8 @@ Le plugin liste automatiquement les fichiers `.wav` présents dans ce dossier da
 1. Ajoute ton fichier `*.wav` dans le dossier `Sounds`
 2. Ouvre la fenêtre de configuration : `CompilateurAlert/Settings Window`
 3. Choisis indépendamment :
-   - **Error Sound File**
-   - **Succes Sound File**
+  - **Error Sound File**
+  - **Succes Sound File**
 4. Régle le **volume** de chaque évènement
 5. Clique sur **Confirm settings** pour sauvegarder les paramètres
 
