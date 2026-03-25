@@ -44,10 +44,10 @@ internal static class CompilateurSound
     //* Charge les réglages persistés
     private static void LoadSettingsFromPrefs()
     {
-        errorSoundName = EditorPrefs.GetString(PrefErrorSoundName, "error.wav");
-        succesSoundName = EditorPrefs.GetString(PrefSuccesSoundName, "succes.wav");
-        errorSoundVolume = EditorPrefs.GetFloat(PrefErrorSoundVolume, 0.5f);
-        succesSoundVolume = EditorPrefs.GetFloat(PrefSuccesSoundVolume, 0.5f);
+        errorSoundName = EditorPrefs.GetString(PrefErrorSoundName, "cheh_Maskey.wav");
+        succesSoundName = EditorPrefs.GetString(PrefSuccesSoundName, "Shoobidoba.wav");
+        errorSoundVolume = EditorPrefs.GetFloat(PrefErrorSoundVolume, errorSoundVolume);
+        succesSoundVolume = EditorPrefs.GetFloat(PrefSuccesSoundVolume, succesSoundVolume);
         //* Clamp au cas où
         errorSoundVolume = Mathf.Clamp01(errorSoundVolume);
         succesSoundVolume = Mathf.Clamp01(succesSoundVolume);
